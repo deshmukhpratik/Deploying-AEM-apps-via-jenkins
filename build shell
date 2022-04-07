@@ -1,0 +1,36 @@
+TIME=`date +%d%m%Y_%H%M`
+                           cd /var/lib/jenkins/workspace/TC-NLI-SIT-Apps
+                           mkdir zipfiles
+                           find . -name "*.zip" -not -path "./zipfiles/*" -exec cp -rf {} zipfiles \;
+                           cd zipfiles
+                           find . -name "*.zip" -exec basename {} .zip \; >> filenames
+                           file=filenames
+                           #Dev Environment Details
+                           Author_Host="172.27.16.20"
+                           Author_Port="4502"
+                           User="admin"
+                           Passwd=${Password}
+                           # Package Manager URL of the AEM.
+                           URL="/crx/packmgr/service.jsp"
+                           echo
+                           echo " Installing Pakage on Author"
+                           echo
+                           while IFS= read -r LINE; do
+                           curl -u $User:$Passwd -F file=@$LINE.zip -F name=$LINE -F force=true -F install=true http://$Author_Host:$Author_Port$URL
+                           if [ $? -eq 0 ] ; then
+                                 echo "Installing Package on Author is Sucess" >> /tmp/jenkinslog
+                                 Commiter_email=$(git --no-pager show -s --format=\'%ae\')								 
+                           else
+                                 echo "Installing Package on Author Failed" 1>&2 >> /tmp/jenkinslog
+                           fi
+                           #curl -u $User:sIt$pub#4503 -F file=@$LINE.zip -F name=$LINE -F force=true -F install=true http://$Author_Host:4503$URL
+                           curl -u $User:$Passwd -X POST http://$Author_Host:$Author_Port/crx/packmgr/service/.json/etc/packages/tata-capital-packages/tata-capital-website.ui.apps-0.0.1-SNAPSHOT.zip?cmd=replicate
+                           if [ $? -eq 0 ] ; then
+                                 echo "Installing Package on Publish is Sucess" >> /tmp/jenkinslog
+                                 curl -s "https://api.telegram.org/bot${Bot_Token}/sendMessage?chat_id=635834411&text=Deployed release/SIT branch on Sit:all by ${Commiter_email}"
+                                 curl -s "https://api.telegram.org/bot${Bot_Token}/sendMessage?chat_id=1419428931&text=Deployed release/SIT branch on Sit:all by ${Commiter_email}"
+                                 curl -s "https://api.telegram.org/bot${Bot_Token}/sendMessage?chat_id=499030374&text=Deployed release/SIT branch on Sit:all by ${Commiter_email}"
+                           else
+                                 echo "Installing Package on Publish Failed" 1>&2 >> /tmp/jenkinslog
+                           fi
+                           done < "$file"
